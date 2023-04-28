@@ -15,32 +15,22 @@ export async function createTodo(
     userId: string,
     createTodoRequest: CreateTodoRequest
 ): Promise<TodoItem> {
-    const todoId = uuid.v4();
-    const createdAt = new Date().toISOString();
-    const attachmentUrl = await attachmentUtils.getAttachmentUrl(todoId);
-
-    const todoItem: TodoItem = {
-        todoId,
-        userId,
-        createdAt,
-        done: false,
-        attachmentUrl,
-        ...createTodoRequest
-    };
+    logger.info('create todo for user', userId)
+    const todoId = uuid.v4()
 
     logger.info(`Creating todo ${todoId} for user ${userId}`);
 
-    return await todoAccess.createTodo(todoItem);
-}
-
-async function getTodos(userId: string): Promise<TodoItem[]> {
-    logger.info(`Getting all todos for user ${userId}`);
-    return todoAccess.getTodos(userId);
+    return await todoAccess.createTodo({
+        userId,
+        todoId,
+        createdAt: new Date().toISOString(),
+        ...createTodoRequest
+    } as TodoItem)
 }
 
 export async function updateTodo(
-    userId: string,
     todoId: string,
+    userId: string,
     todoUpdate: UpdateTodoRequest
 ): Promise<void> {
     return await todoAccess.updateTodo(todoId, userId, todoUpdate);
@@ -57,8 +47,14 @@ export async function getTodosForUser(userId: string): Promise<TodoItem[]> {
     return await todoAccess.getAllTodos(userId);
 }
 
-export async function createAttachmentPresignedUrl(userId: string, todoId: string): Promise<string> {
-    logger.info('create attachment url', todoId, userId)
+export async function todoExists(todoId: string, userId: string) {
+    return todoAccess.checkExists(todoId, userId);
+}
 
-    return await attachmentUtils.getUploadUrl(todoId)
+export function createAttachmentPresignedUrl(attachmentId: string) {
+    return attachmentUtils.generateAttachmentPresignedUrl(attachmentId);
+}
+
+export async function updateTodoAttachmentUrl(todoId: string, userId: string, attachmentUrl: string) {
+    return attachmentUtils.updateTodoAttachmentUrl(todoId, userId, attachmentUrl);
 }

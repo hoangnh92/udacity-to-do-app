@@ -6,7 +6,6 @@ import { TodoUpdate } from '../models/TodoUpdate';
 const AWSXRay = require('aws-xray-sdk');
 
 const XAWS = AWSXRay.captureAWS(AWS);
-
 const logger = createLogger('TodosAccess')
 
 // TODO: Implement the dataLayer logic
@@ -45,55 +44,18 @@ export class TodosAccess {
         return todo as TodoItem;
     }
 
-    async updateTodo(
-        userId: string,
-        todoId: string,
-        todoUpdate: TodoUpdate
-    ): Promise<void> {
-        logger.info(`Updating todo ${todoId} for user ${userId}`)
-
-        const key = {
-            userId: userId,
-            todoId: todoId
-        }
-
+    async updateTodo(todoId: string, userId: string, updatedTodo: TodoUpdate): Promise<void> {
         await this.docClient.update({
             TableName: this.todosTable,
-            Key: key,
-            UpdateExpression: 'set #name = :n, #dueDate = :due, #done = :d',
+            Key: { userId, todoId },
+            UpdateExpression: "set #n = :n, dueDate=:dueDate, done=:done",
             ExpressionAttributeValues: {
-                ':n': todoUpdate.name,
-                ':due': todoUpdate.dueDate,
-                ':d': todoUpdate.done
+                ":n": updatedTodo.name,
+                ":dueDate": updatedTodo.dueDate,
+                ":done": updatedTodo.done
             },
-            ExpressionAttributeNames: {
-                '#name': 'name',
-                '#dueDate': 'dueDate',
-                '#done': 'done'
-            },
-            ReturnValues: 'UPDATED_NEW'
-        }).promise()
-    }
-
-    async updateTodoAttachmentUrl(
-        userId: string,
-        todoId: string,
-        attachmentUrl: string
-    ): Promise<void> {
-        logger.info(`Updating todo ${todoId} for user ${userId}`)
-
-        const key = {
-            userId: userId,
-            todoId: todoId
-        }
-
-        await this.docClient.update({
-            TableName: this.todosTable,
-            Key: key,
-            UpdateExpression: 'set attachmentUrl = :attachmentUrl',
-            ExpressionAttributeValues: {
-                ':attachmentUrl': attachmentUrl,
-            }
+            ExpressionAttributeNames: { '#n': 'name' },
+            ReturnValues: "UPDATED_NEW"
         }).promise()
     }
 
@@ -102,6 +64,19 @@ export class TodosAccess {
             TableName: this.todosTable,
             Key: { userId, todoId }
         }).promise()
+    }
+
+    async checkExists(todoId: String, userId: String) {
+        const result = await this.docClient
+            .get({
+                TableName: this.todosTable,
+                Key: {
+                    todoId: todoId,
+                    userId: userId
+                }
+            })
+            .promise()
+        return !!result.Item
     }
 
 }
